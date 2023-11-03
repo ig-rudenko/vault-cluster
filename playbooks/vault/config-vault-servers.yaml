@@ -1,0 +1,76 @@
+---
+- name: Configurate Vault Nodes
+  hosts: vault-servers
+  become: true
+  gather_facts: false
+
+  tasks:
+
+    - name: Create vault config directory
+      file:
+        path: /etc/vault
+        state: directory
+        owner: vault
+        group: vault
+        mode: '0750'
+
+    - name: Ensure vault_s*.hcl file exists
+      copy:
+        content: |
+          listener "tcp" {
+            address = "127.0.0.1:8200"
+            cluster_address = "127.0.0.1:8201"
+            tls_disable = "true"
+          }
+
+          storage "consul" {
+            address = "127.0.0.1:8500"
+            path = "vault/"
+          }
+          
+          ui = true
+          api_addr = "http://127.0.0.1:8200"
+          cluster_addr = "https://127.0.0.1:8201"
+
+        dest: "/etc/vault/{{ inventory_hostname | replace('-', '_') }}.hcl"
+        owner: vault
+        group: vault
+        mode: '0600'
+
+    - name: Create vault service file
+      copy:
+        content: |
+          [Unit]
+          Description=Vault secret management tool
+          Requires=network-online.target
+          After=network-online.target
+          
+          [Service]
+          User=vault
+          Group=vault
+          
+          PIDFile=/var/run/vault.pid
+
+          ExecStart=/bin/vault server -config=/etc/vault/{{ inventory_hostname | replace('-', '_') }}.hcl -log-level=debug
+          ExecReload=/bin/kill -HUP $MAINPID
+          
+          KillMode=process
+          KillSignal=SIGTERM
+          Restart=on-failure
+          RestartSec=42s
+          LimitMEMLOCK=infinity
+          
+          [Install]
+          WantedBy=multi-user.target
+
+        dest: "/etc/systemd/system/{{ inventory_hostname | replace('-', '_') }}.service"
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Enable and start vault service
+      systemd:
+        name: "{{ inventory_hostname | replace('-', '_') }}"
+        enabled: yes
+        state: started
+        daemon_reload: yes

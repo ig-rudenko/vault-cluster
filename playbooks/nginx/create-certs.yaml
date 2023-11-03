@@ -1,0 +1,45 @@
+---
+- name: Создание самоподписанного сертификата
+  hosts: nginx-balancer
+  become: yes
+  gather_facts: no
+
+  tasks:
+    - name: Создаем папку для сертификата
+      file:
+        path: "/etc/ssl/vault"
+        state: directory
+        mode: 0644
+        owner: nginx
+        group: nginx
+
+    - name: Генерируем приватный ключ
+      openssl_privatekey:
+        path: "/etc/ssl/vault/vault.key"
+        size: 2048
+        type: RSA
+
+    - name: Генерируем самоподписный сертификат
+      community.crypto.x509_certificate:
+        path: "/etc/ssl/vault/vault.crt"
+        privatekey_path: "/etc/ssl/vault/vault.key"
+        provider: selfsigned
+        selfsigned_not_before: "+0d" # Измените на желаемую дату начала действия сертификата
+        selfsigned_not_after: "+365d" # Измените на желаемую дату окончания действия сертификата
+
+    - name: Получение информации сертификата
+      community.crypto.x509_certificate_info:
+        path: "/etc/ssl/vault/vault.crt"
+      register: cert_info
+
+    - name: Вывод информации сертификата
+      debug:
+        var: cert_info
+
+    #- name: Генерируем параметры Диффи-Хеллмана
+    #  community.crypto.openssl_dhparam:
+    #    path: "/etc/ssl/vault/dhparam.pem"
+    #    size: 2048 # Измените на желаемый размер ключа
+    #    force: false # Измените на true, если хотите перегенерировать параметры при каждом запуске
+    #    state: present
+    #    attributes: "u=rw,g=r,o=r" # Измените на желаемые атрибуты файла

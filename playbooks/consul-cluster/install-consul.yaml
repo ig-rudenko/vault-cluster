@@ -1,0 +1,27 @@
+---
+- hosts: consul-cluster
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Ensure consul group exists
+      group:
+        name: consul
+        state: present
+      ignore_errors: true
+
+    - name: Ensure consul user exists
+      user:
+        name: consul
+        group: consul
+        create_home: yes
+        home: /home/consul
+      ignore_errors: true
+
+    - name: Copy consul file from app folder to /bin/consul
+      copy:
+        src: ../../apps/consul
+        dest: /bin/consul
+        owner: consul
+        group: consul
+        mode: '0755'

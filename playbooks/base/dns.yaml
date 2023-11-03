@@ -1,0 +1,27 @@
+---
+- name: Add consul and vault hosts to /etc/hosts
+  hosts: consul-cluster, consul-vault
+  become: yes
+  gather_facts: false
+  tasks:
+
+    - name: Add hosts to /etc/hosts
+      blockinfile:
+        path: /etc/hosts
+        block: |
+          # Consul cluster
+          {% for host in groups['consul-servers'] %}
+          {{ hostvars[host]['ansible_host'] }}    {{ hostvars[host]['inventory_hostname'] }}
+          {% endfor %}
+          # Consul client
+          {% for host in groups['consul-clients'] %}
+          {{ hostvars[host]['ansible_host'] }}    {{ hostvars[host]['inventory_hostname'] }}
+          {% endfor %}
+          # Vault
+          {% for host in groups['vault-servers'] %}
+          {{ hostvars[host]['ansible_host'] }}    {{ hostvars[host]['inventory_hostname'] }}
+          {% endfor %}
+
+        marker: "# {mark} ANSIBLE MANAGED BLOCK"
+        create: yes
+        state: present

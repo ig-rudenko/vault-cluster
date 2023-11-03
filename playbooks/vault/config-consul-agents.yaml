@@ -1,0 +1,77 @@
+---
+- name: Create consul_s*.json file
+  hosts: consul-clients
+  become: true
+  gather_facts: false
+
+  vars:
+    retry_join: "{{ groups['consul-servers'] | to_json }}"
+
+  tasks:
+
+    - name: Create consul config directory
+      file:
+        path: /etc/consul
+        state: directory
+        owner: consul
+        group: consul
+        mode: '0750'
+
+    - name: Ensure consul_c*.json file exists
+      copy:
+        content: |
+          {
+            "server": false,
+            "node_name": "{{ inventory_hostname }}",
+            "datacenter": "{{ datacenter }}",
+            "data_dir": "/home/consul/client/data",
+            "bind_addr": "{{ ansible_host }}",
+            "client_addr": "127.0.0.1",
+            "retry_join": {{ retry_join }},
+            "log_level": "DEBUG",
+            "enable_syslog": true,
+            "encrypt": "{{ encrypt }}",
+          }
+        dest: "/etc/consul/{{ inventory_hostname | replace('-', '_') }}.json"
+        owner: consul
+        group: consul
+        mode: '0600'
+
+    - name: Create consul service file
+      copy:
+        content: |
+          [Unit]
+          Description=Consul client agent
+          Requires=network-online.target
+          After=network-online.target
+          
+          [Service]
+          User=consul
+          Group=consul
+          PIDFile=/var/run/consul/consul_agent.pid
+          PermissionsStartOnly=true
+          ExecStartPre=-/bin/mkdir -p /var/run/consul
+          ExecStartPre=/bin/chown -R consul:consul /var/run/consul
+          ExecStart=/bin/consul agent \
+              -config-file=/etc/consul/{{ inventory_hostname | replace('-', '_') }}.json \
+              -pid-file=/var/run/consul/consul_agent.pid
+          ExecReload=/bin/kill -HUP $MAINPID
+          KillMode=process
+          KillSignal=SIGTERM
+          Restart=on-failure
+          RestartSec=42s
+          
+          [Install]
+          WantedBy=multi-user.target
+
+        dest: "/etc/systemd/system/{{ inventory_hostname | replace('-', '_') }}.service"
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Enable and start consul service
+      systemd:
+        name: "{{ inventory_hostname | replace('-', '_') }}"
+        enabled: yes
+        state: started
+        daemon_reload: yes

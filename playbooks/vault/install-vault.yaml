@@ -1,0 +1,27 @@
+---
+- hosts: vault-servers
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Ensure vault group exists
+      group:
+        name: vault
+        state: present
+      ignore_errors: true
+
+    - name: Ensure group user exists
+      user:
+        name: vault
+        group: vault
+        create_home: yes
+        home: /home/vault
+      ignore_errors: true
+
+    - name: Copy consul file from app folder to /bin/consul
+      copy:
+        src: ../../apps/vault
+        dest: /bin/vault
+        owner: vault
+        group: vault
+        mode: '0755'

@@ -1,0 +1,84 @@
+---
+- name: Configurate Consul Cluster
+  hosts: consul-servers
+  become: true
+  gather_facts: false
+
+  vars:
+    retry_join: "{{ groups['consul-servers'] | to_json }}"
+
+  tasks:
+
+    - name: Create consul config directory
+      file:
+        path: /etc/consul
+        state: directory
+        owner: consul
+        group: consul
+        mode: '0750'
+
+    - name: Ensure consul_s*.json file exists
+      copy:
+        content: |
+          {
+            "server": true,
+            "node_name": "{{ inventory_hostname }}",
+            "datacenter": "{{ datacenter }}",
+            "data_dir": "/home/consul/data",
+            "bind_addr": "{{ ansible_host }}",
+            "client_addr": "127.0.0.1",
+            "advertise_addr": "{{ ansible_host }}",
+            "bootstrap_expect": 3,
+            "retry_join": {{ retry_join }},
+            "ui_config": {
+              "enabled": true
+            },
+            "log_level": "DEBUG",
+            "enable_syslog": true,
+            "encrypt": "{{ encrypt }}",
+          }
+        dest: "/etc/consul/{{ inventory_hostname | replace('-', '_') }}.json"
+        owner: consul
+        group: consul
+        mode: '0600'
+
+    - name: Create consul service file
+      copy:
+        content: |
+          [Unit]
+          Description=Consul server agent
+          Requires=network-online.target
+          After=network-online.target
+
+          [Service]
+          User=consul
+          Group=consul
+          PIDFile=/var/run/consul/consul.pid
+          PermissionsStartOnly=true
+
+          ExecStartPre=-/bin/mkdir -p /var/run/consul
+          ExecStartPre=/bin/chown -R consul:consul /var/run/consul
+          ExecStart=/bin/consul agent \
+            -config-file=/etc/consul/{{ inventory_hostname | replace('-', '_') }}.json \
+          	-pid-file=/var/run/consul/consul.pid
+
+          ExecReload=/bin/kill -HUP $MAINPID
+          KillMode=process
+          KillSignal=SIGTERM
+          Restart=on-failure
+          RestartSec=42s
+
+          [Install]
+          WantedBy=multi-user.target
+
+        dest: "/etc/systemd/system/{{ inventory_hostname | replace('-', '_') }}.service"
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Enable and start consul service
+      systemd:
+        name: "{{ inventory_hostname | replace('-', '_') }}"
+        enabled: yes
+        state: started
+        daemon_reload: yes

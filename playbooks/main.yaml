@@ -1,0 +1,23 @@
+---
+- name: Установка DNS имен
+  import_playbook: base/dns.yaml
+
+- name: Установка consul
+  import_playbook: consul-cluster/install-consul.yaml
+- name: Установка vault
+  import_playbook: vault/install-vault.yaml
+
+- name: Конфигурирование consul cluster
+  import_playbook: consul-cluster/config.yaml
+
+- name: Конфигурирование consul clients
+  import_playbook: vault/config-consul-agents.yaml
+- name: Конфигурирование vault servers
+  import_playbook: vault/config-vault-servers.yaml
+
+# Если требуется
+#- name: Создание самоподписанного сертификата
+#  import_playbook: nginx/create-certs.yaml
+
+- name: Конфигурирование nginx
+  import_playbook: nginx/config.yaml
