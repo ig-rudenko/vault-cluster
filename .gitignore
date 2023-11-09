@@ -3,4 +3,7 @@
 
 .idea
 hosts
+apps
 venv
+vault*
+manager.py

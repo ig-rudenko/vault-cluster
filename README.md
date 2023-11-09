@@ -1,11 +1,27 @@
 ## Кластер Vault (HA)
 
+Ansible playbooks для развертывания кластера Vault
+
+---
+
 ![](img/img.png)
 
+Поместите исполняемые файлы необходимых версий consul и vault в папку `apps`.
+
+Названия файлов должны быть `consul` и `vault`.
+
+
+### Структура файла inventory
 
 ```ini
 [nginx-balancer]
 nginx ansible_host=
+
+[nginx-balancer:vars]
+schema=https
+# IPs или domains для балансировки серверов vault
+upstreams=["vault-s1", "vault-s2"]
+
 
 [consul-servers]
 consul-s1 ansible_host=

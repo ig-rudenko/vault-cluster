@@ -73,5 +73,5 @@
       systemd:
         name: "{{ inventory_hostname | replace('-', '_') }}"
         enabled: yes
-        state: started
+        state: restarted
         daemon_reload: yes
