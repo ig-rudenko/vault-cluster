@@ -6,4 +6,5 @@ hosts
 apps
 venv
 vault*
+!img/vault.svg
 manager.py
